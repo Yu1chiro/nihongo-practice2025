@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz Bahasa Jepang</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'soft-pink': '#fdf2f8',
+                        'soft-purple': '#f3e8ff',
+                        'soft-blue': '#eff6ff',
+                        'soft-green': '#f0fdf4',
+                        'accent-pink': '#ec4899',
+                        'accent-purple': '#8b5cf6',
+                        'accent-blue': '#3b82f6',
+                        'accent-green': '#10b981'
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-soft-pink via-soft-purple to-soft-blue">
+    <div class="container mx-auto px-4 py-8">
+        <header class="text-center mb-12">
+            <h1 class="text-4xl md:text-5xl font-bold text-gray-800 mb-4">
+                🌸 Quiz Bahasa Jepang 🌸
+            </h1>
+            <p class="text-lg md:text-xl text-gray-600 max-w-2xl mx-auto">
+                Tingkatkan kemampuan bahasa Jepang Anda dengan quiz interaktif yang menyenangkan!
+            </p>
+        </header>
+
+        <div class="flex flex-col md:flex-row gap-6 mb-8">
+            <div class="flex-1 bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-xl">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-4 text-center">📚 Progress Belajar</h2>
+                <div id="progressInfo" class="text-center">
+                    <div class="text-3xl font-bold text-accent-purple mb-2" id="totalQuizCompleted">0</div>
+                    <div class="text-gray-600">Quiz Selesai</div>
+                </div>
+            </div>
+            
+            <div class="flex-1 bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-xl">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-4 text-center">⭐ Skor Tertinggi</h2>
+                <div id="highestScore" class="text-center">
+                    <div class="text-3xl font-bold text-accent-green mb-2" id="bestScore">0%</div>
+                    <div class="text-gray-600">Pencapaian Terbaik</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center mb-8">
+            <a href="/statistik" class="inline-flex items-center px-6 py-3 bg-accent-purple text-white font-semibold rounded-full shadow-lg hover:bg-purple-600 transition-all duration-300 transform hover:scale-105">
+                📊 Lihat Statistik Detail
+            </a>
+        </div>
+
+        <div id="quizGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+        </div>
+    </div>
+
+    <script>
+        function fisherYatesShuffle(array) {
+            const arr = [...array];
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr;
+        }
+
+        function getProgressData() {
+            const progress = JSON.parse(localStorage.getItem('quizProgress') || '{}');
+            return progress;
+        }
+
+        function updateProgressDisplay() {
+            const progress = getProgressData();
+            const completed = Object.keys(progress).length;
+            const scores = Object.values(progress).map(p => p.score);
+            const highestScore = scores.length > 0 ? Math.max(...scores) : 0;
+            
+            document.getElementById('totalQuizCompleted').textContent = completed;
+            document.getElementById('bestScore').textContent = Math.round(highestScore) + '%';
+        }
+
+        function createQuizCard(quiz) {
+            const progress = getProgressData();
+            const isCompleted = progress[quiz.id];
+            const score = isCompleted ? Math.round(progress[quiz.id].score) : 0;
+            
+            return `
+                <div class="bg-white/90 backdrop-blur-sm rounded-2xl p-6 shadow-xl transform transition-all duration-300 hover:scale-105 hover:shadow-2xl cursor-pointer quiz-card" data-quiz="${quiz.id}">
+                    <div class="text-center mb-4">
+                        <div class="text-4xl mb-3">
+                            ${isCompleted ? '✅' : '📝'}
+                        </div>
+                        <h3 class="text-xl font-bold text-gray-800 mb-2">
+                            ${quiz.nama}
+                        </h3>
+                        <p class="text-gray-600">
+                            ${quiz.jumlahSoal} Soal
+                        </p>
+                    </div>
+                    
+                    <div class="space-y-3">
+                        ${isCompleted ? 
+                            `<div class="bg-gradient-to-r from-accent-green to-green-400 text-white p-3 rounded-xl text-center">
+                                <div class="text-lg font-semibold">Skor: ${score}%</div>
+                                <div class="text-sm opacity-90">Selesai</div>
+                            </div>` :
+                            `<div class="bg-gradient-to-r from-accent-blue to-blue-400 text-white p-3 rounded-xl text-center">
+                                <div class="text-sm">Belum Dikerjakan</div>
+                            </div>`
+                        }
+                        
+                        <button class="w-full py-3 px-4 bg-gradient-to-r from-accent-pink to-pink-400 text-white font-semibold rounded-xl hover:shadow-lg transition-all duration-300 transform hover:scale-105">
+                            ${isCompleted ? '🔄 Kerjakan Lagi' : '🚀 Mulai Quiz'}
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function loadQuizList() {
+            try {
+                const response = await fetch('/api/quiz-list');
+                const quizList = await response.json();
+                
+                const quizGrid = document.getElementById('quizGrid');
+                quizGrid.innerHTML = quizList.map(createQuizCard).join('');
+                
+                document.querySelectorAll('.quiz-card').forEach(card => {
+                    card.addEventListener('click', () => {
+                        const quizId = card.dataset.quiz;
+                        localStorage.setItem('currentQuiz', quizId);
+                        window.location.href = '/quiz';
+                    });
+                });
+            } catch (error) {
+                console.error('Error loading quiz list:', error);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadQuizList();
+            updateProgressDisplay();
+        });
+    </script>
+</body>
+</html>

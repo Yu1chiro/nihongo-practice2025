@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz - Bahasa Jepang</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'soft-pink': '#fdf2f8',
+                        'soft-purple': '#f3e8ff',
+                        'soft-blue': '#eff6ff',
+                        'soft-green': '#f0fdf4',
+                        'accent-pink': '#ec4899',
+                        'accent-purple': '#8b5cf6',
+                        'accent-blue': '#3b82f6',
+                        'accent-green': '#10b981'
+                    }
+                }
+            }
+        }
+    </script>
+
+</head>
+
+<body class="min-h-screen bg-gradient-to-br from-soft-blue via-soft-purple to-soft-pink">
+    <div class="container mx-auto px-4 py-8">
+        <header class="text-center mb-8">
+            <a href="/"
+                class="inline-flex items-center text-accent-purple hover:text-purple-600 mb-4 transition-colors">
+                ← Kembali ke Beranda
+            </a>
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-800 mb-2" id="quizTitle">
+                Quiz Bahasa Jepang
+            </h1>
+            <div class="flex justify-center items-center space-x-4 text-sm text-gray-600">
+                <span id="questionCounter">Soal 1 dari 5</span>
+                <span>•</span>
+                <span id="timer" class="font-semibold">00:00</span>
+            </div>
+        </header>
+
+        <div class="max-w-4xl mx-auto">
+            <div class="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl p-6 md:p-8 mb-6">
+                <div class="mb-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <div class="text-sm font-medium text-gray-600">Progress</div>
+                        <div class="text-sm font-medium text-gray-600" id="progressText">0%</div>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-3">
+                        <div class="bg-gradient-to-r from-accent-purple to-purple-400 h-3 rounded-full transition-all duration-500 ease-out"
+                            style="width: 0%" id="progressBar"></div>
+                    </div>
+                </div>
+
+                <div id="questionContainer">
+                    <h2 class="text-xl md:text-2xl font-semibold text-gray-800 mb-6 leading-relaxed" id="questionText">
+                        Loading...
+                    </h2>
+
+                    <div id="optionsContainer" class="space-y-3">
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-center">
+                <button id="nextButton"
+                    class="hidden px-8 py-3 bg-gradient-to-r from-accent-green to-green-400 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                    disabled>
+                    Selanjutnya
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="resultModal"
+        class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm hidden items-center justify-center z-50">
+        <div class="bg-white rounded-2xl p-8 m-4 max-w-md w-full text-center shadow-2xl">
+            <div class="text-6xl mb-4" id="resultEmoji">🎉</div>
+            <h3 class="text-2xl font-bold text-gray-800 mb-4">Quiz Selesai!</h3>
+            <div class="text-4xl font-bold text-accent-purple mb-2" id="finalScore">85%</div>
+            <p class="text-gray-600 mb-6" id="scoreMessage">Kerja bagus!</p>
+            <div class="space-y-3">
+                <button id="reviewButton"
+                    class="w-full py-3 px-4 bg-accent-blue text-white font-semibold rounded-xl hover:bg-blue-600 transition-colors">
+                    📝 Lihat Pembahasan
+                </button>
+                <button id="retryButton"
+                    class="w-full py-3 px-4 bg-accent-purple text-white font-semibold rounded-xl hover:bg-purple-600 transition-colors">
+                    🔄 Coba Lagi
+                </button>
+                <button id="backToHomeButton"
+                    class="w-full py-3 px-4 bg-gray-500 text-white font-semibold rounded-xl hover:bg-gray-600 transition-colors">
+                    🏠 Kembali ke Beranda
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="reviewModal"
+        class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm hidden items-center justify-center z-50">
+        <div class="bg-white rounded-2xl p-6 m-4 max-w-2xl w-full max-h-96 overflow-y-auto shadow-2xl">
+            <h3 class="text-2xl font-bold text-gray-800 mb-4 text-center">📝 Pembahasan Jawaban</h3>
+            <div id="reviewContent"></div>
+            <div class="text-center mt-6">
+                <button id="closeReviewButton"
+                    class="px-6 py-2 bg-gray-500 text-white font-semibold rounded-xl hover:bg-gray-600 transition-colors">
+                    Tutup
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class QuizApp {
+
+            constructor() {
+                this.currentQuiz = localStorage.getItem('currentQuiz');
+                this.questions = [];
+                this.currentQuestionIndex = 0;
+                this.userAnswers = [];
+                this.selectedAnswer = null;
+                this.startTime = Date.now();
+                this.timerInterval = null;
+                this.answerLocked = false;
+                this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+                this.init();
+            }
+
+            playTone(frequency, duration = 150, type = 'sine') {
+                if (!this.audioCtx) return;
+
+                const oscillator = this.audioCtx.createOscillator();
+                const gainNode = this.audioCtx.createGain();
+
+                oscillator.connect(gainNode);
+                gainNode.connect(this.audioCtx.destination);
+
+                oscillator.type = type;
+                oscillator.frequency.setValueAtTime(frequency, this.audioCtx.currentTime);
+
+                gainNode.gain.setValueAtTime(0.5, this.audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioCtx.currentTime + duration / 1000);
+
+                oscillator.start(this.audioCtx.currentTime);
+                oscillator.stop(this.audioCtx.currentTime + duration / 1000);
+            }
+
+            playSoundFeedback(isCorrect) {
+                try {
+                    if (isCorrect) {
+                        // Suara untuk jawaban benar - nada naik
+                        this.playTone(523.25, 150, 'sine'); // C5
+                        setTimeout(() => this.playTone(659.25, 150, 'sine'), 100); // E5
+                        setTimeout(() => this.playTone(783.99, 200, 'sine'), 200); // G5
+                    } else {
+                        // Suara untuk jawaban salah - nada turun
+                        this.playTone(220.00, 300, 'square'); // A3
+                        setTimeout(() => this.playTone(174.61, 400, 'square'), 150); // F3
+                    }
+                } catch (error) {
+                    console.log('Audio tidak tersedia');
+                }
+            }
+
+            fisherYatesShuffle(array) {
+                const arr = [...array];
+                for (let i = arr.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [arr[i], arr[j]] = [arr[j], arr[i]];
+                }
+                return arr;
+            }
+
+            async init() {
+                if (!this.currentQuiz) {
+                    window.location.href = '/';
+                    return;
+                }
+
+                await this.loadQuizData();
+                this.setupEventListeners();
+                this.startTimer();
+                this.displayQuestion();
+            }
+
+            async loadQuizData() {
+                try {
+                    const response = await fetch(`/api/quiz/${this.currentQuiz}`);
+                    const data = await response.json();
+
+                    this.questions = data.map(q => ({
+                        ...q,
+                        pilihan_ganda: this.fisherYatesShuffle(q.pilihan_ganda)
+                    }));
+
+                    document.getElementById('quizTitle').textContent = this.currentQuiz.replace('kuis', '').replace('Pertemuan', 'Pertemuan ');
+                } catch (error) {
+                    console.error('Error loading quiz:', error);
+                    alert('Gagal memuat quiz. Silakan coba lagi.');
+                    window.location.href = '/';
+                }
+            }
+
+            setupEventListeners() {
+                document.getElementById('nextButton').addEventListener('click', () => {
+                    this.handleNextQuestion();
+                });
+
+                document.getElementById('retryButton').addEventListener('click', () => {
+                    this.restartQuiz();
+                });
+
+                document.getElementById('backToHomeButton').addEventListener('click', () => {
+                    window.location.href = '/';
+                });
+
+                document.getElementById('reviewButton').addEventListener('click', () => {
+                    this.showReview();
+                });
+
+                document.getElementById('closeReviewButton').addEventListener('click', () => {
+                    document.getElementById('reviewModal').classList.add('hidden');
+                    document.getElementById('reviewModal').classList.remove('flex');
+                });
+            }
+
+            startTimer() {
+                this.timerInterval = setInterval(() => {
+                    const elapsed = Date.now() - this.startTime;
+                    const minutes = Math.floor(elapsed / 60000);
+                    const seconds = Math.floor((elapsed % 60000) / 1000);
+                    document.getElementById('timer').textContent =
+                        `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                }, 1000);
+            }
+
+            displayQuestion() {
+                const question = this.questions[this.currentQuestionIndex];
+                const progress = ((this.currentQuestionIndex + 1) / this.questions.length) * 100;
+
+                document.getElementById('questionCounter').textContent =
+                    `Soal ${this.currentQuestionIndex + 1} dari ${this.questions.length}`;
+                document.getElementById('progressText').textContent = `${Math.round(progress)}%`;
+                document.getElementById('progressBar').style.width = `${progress}%`;
+                document.getElementById('questionText').textContent = question.soal;
+
+                const optionsContainer = document.getElementById('optionsContainer');
+                optionsContainer.innerHTML = '';
+
+                question.pilihan_ganda.forEach((option, index) => {
+                    const optionElement = document.createElement('div');
+                    optionElement.className = 'option-card p-4 border-2 border-gray-200 rounded-xl cursor-pointer transition-all duration-300 hover:border-accent-purple hover:bg-soft-purple transform hover:scale-105';
+                    optionElement.textContent = option;
+
+                    optionElement.addEventListener('click', () => {
+                        this.selectAnswer(option, optionElement);
+                    });
+
+                    optionsContainer.appendChild(optionElement);
+                });
+
+                // Reset state untuk soal baru
+                this.selectedAnswer = null;
+                this.answerLocked = false;
+            }
+            selectAnswer(answer, element) {
+                if (this.answerLocked) return; // Mencegah perubahan jawaban setelah terpilih
+
+                const question = this.questions[this.currentQuestionIndex];
+                const isCorrect = answer === question.jawaban;
+
+                // Reset semua option cards
+                document.querySelectorAll('.option-card').forEach(card => {
+                    card.classList.remove('border-accent-purple', 'bg-soft-purple', 'ring-2', 'ring-accent-purple');
+                    card.classList.remove('bg-green-100', 'border-green-500', 'text-green-800');
+                    card.classList.remove('bg-red-100', 'border-red-500', 'text-red-800');
+                    card.classList.add('border-gray-200');
+                    card.style.pointerEvents = 'auto'; // Reset pointer events
+                });
+
+                // Tampilkan feedback visual langsung
+                if (isCorrect) {
+                    element.classList.remove('border-gray-200');
+                    element.classList.add('bg-green-100', 'border-green-500', 'text-green-800', 'ring-2', 'ring-green-500');
+                    this.playSoundFeedback(true);
+                } else {
+                    element.classList.remove('border-gray-200');
+                    element.classList.add('bg-red-100', 'border-red-500', 'text-red-800', 'ring-2', 'ring-red-500');
+                    this.playSoundFeedback(false);
+
+                    // Tampilkan jawaban yang benar
+                    document.querySelectorAll('.option-card').forEach(card => {
+                        if (card.textContent === question.jawaban) {
+                            card.classList.add('bg-green-100', 'border-green-500', 'text-green-800', 'ring-2', 'ring-green-500');
+                        }
+                    });
+                }
+
+                // Lock pilihan setelah memilih dan enable tombol next
+                this.answerLocked = true;
+                this.selectedAnswer = answer;
+                document.getElementById('nextButton').disabled = false;
+
+                // Disable semua option cards untuk mencegah klik ulang
+                document.querySelectorAll('.option-card').forEach(card => {
+                    card.style.pointerEvents = 'none';
+                });
+                setTimeout(() => {
+        if (this.selectedAnswer) {
+            document.getElementById('nextButton').click();
+        }
+    }, 800);
+                // Auto advance setelah 2 detik (opsional - bisa dihilangkan jika tidak diinginkan)
+                
+            }
+            handleNextQuestion() {
+                if (!this.selectedAnswer) return;
+
+                const question = this.questions[this.currentQuestionIndex];
+                const isCorrect = this.selectedAnswer === question.jawaban;
+
+                this.userAnswers.push({
+                    question: question.soal,
+                    userAnswer: this.selectedAnswer,
+                    correctAnswer: question.jawaban,
+                    isCorrect: isCorrect
+                });
+
+                this.currentQuestionIndex++;
+
+                if (this.currentQuestionIndex < this.questions.length) {
+                    this.displayQuestion();
+                } else {
+                    this.finishQuiz();
+                }
+            }
+
+            finishQuiz() {
+                clearInterval(this.timerInterval);
+
+                const correctAnswers = this.userAnswers.filter(a => a.isCorrect).length;
+                const score = (correctAnswers / this.questions.length) * 100;
+                const timeSpent = Math.floor((Date.now() - this.startTime) / 1000);
+
+                this.saveProgress(score, timeSpent);
+                this.showResult(score, correctAnswers);
+            }
+
+            saveProgress(score, timeSpent) {
+                const progress = JSON.parse(localStorage.getItem('quizProgress') || '{}');
+                progress[this.currentQuiz] = {
+                    score: score,
+                    correctAnswers: this.userAnswers.filter(a => a.isCorrect).length,
+                    totalQuestions: this.questions.length,
+                    timeSpent: timeSpent,
+                    completedAt: new Date().toISOString(),
+                    answers: this.userAnswers
+                };
+                localStorage.setItem('quizProgress', JSON.stringify(progress));
+            }
+
+            showResult(score, correctAnswers) {
+                const modal = document.getElementById('resultModal');
+                const emoji = document.getElementById('resultEmoji');
+                const finalScore = document.getElementById('finalScore');
+                const scoreMessage = document.getElementById('scoreMessage');
+
+                finalScore.textContent = `${Math.round(score)}%`;
+
+                let message, emojiIcon;
+                if (score >= 90) {
+                    message = 'Luar biasa! Anda sangat menguasai materi ini! 🌟';
+                    emojiIcon = '🏆';
+                } else if (score >= 80) {
+                    message = 'Bagus sekali! Terus pertahankan! 👏';
+                    emojiIcon = '🎉';
+                } else if (score >= 70) {
+                    message = 'Cukup baik! Masih bisa ditingkatkan! 💪';
+                    emojiIcon = '😊';
+                } else if (score >= 60) {
+                    message = 'Perlu belajar lebih giat lagi! 📚';
+                    emojiIcon = '😅';
+                } else {
+                    message = 'Jangan menyerah! Coba lagi dan belajar lebih banyak! 🌱';
+                    emojiIcon = '😔';
+                }
+
+                emoji.textContent = emojiIcon;
+                scoreMessage.textContent = message;
+
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
+
+            showReview() {
+                const reviewContent = document.getElementById('reviewContent');
+                reviewContent.innerHTML = '';
+
+                this.userAnswers.forEach((answer, index) => {
+                    const reviewItem = document.createElement('div');
+                    reviewItem.className = `p-4 mb-4 rounded-xl ${answer.isCorrect ? 'bg-soft-green border-l-4 border-accent-green' : 'bg-soft-pink border-l-4 border-accent-pink'}`;
+
+                    reviewItem.innerHTML = `
+                        <div class="font-semibold text-gray-800 mb-2">Soal ${index + 1}:</div>
+                        <div class="text-gray-700 mb-3">${answer.question}</div>
+                        <div class="space-y-2">
+                            <div class="text-sm">
+                                <span class="font-semibold">Jawaban Anda:</span> 
+                                <span class="${answer.isCorrect ? 'text-accent-green' : 'text-accent-pink'}">${answer.userAnswer}</span>
+                                ${answer.isCorrect ? '✅' : '❌'}
+                            </div>
+                            ${!answer.isCorrect ? `
+                                <div class="text-sm">
+                                    <span class="font-semibold">Jawaban Benar:</span> 
+                                    <span class="text-accent-green">${answer.correctAnswer}</span> ✅
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+
+                    reviewContent.appendChild(reviewItem);
+                });
+
+                document.getElementById('reviewModal').classList.remove('hidden');
+                document.getElementById('reviewModal').classList.add('flex');
+            }
+
+            restartQuiz() {
+                this.currentQuestionIndex = 0;
+                this.userAnswers = [];
+                this.selectedAnswer = null;
+                this.startTime = Date.now();
+
+                clearInterval(this.timerInterval);
+                this.startTimer();
+
+                document.getElementById('resultModal').classList.add('hidden');
+                document.getElementById('resultModal').classList.remove('flex');
+
+                this.questions = this.questions.map(q => ({
+                    ...q,
+                    pilihan_ganda: this.fisherYatesShuffle(q.pilihan_ganda)
+                }));
+
+                this.displayQuestion();
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            new QuizApp();
+        });
+    </script>
+</body>
+
+</html>
