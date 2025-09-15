@@ -84,7 +84,7 @@
         <div class="bg-white/90 backdrop-blur-sm rounded-2xl p-6 shadow-xl">
             <h3 class="text-xl font-semibold text-gray-800 mb-6 text-center">📚 Riwayat Quiz</h3>
             <div id="quizHistory" class="space-y-4">
-            </div>
+                </div>
         </div>
     </div>
 
@@ -123,7 +123,7 @@
                     new Date(a[1].completedAt) - new Date(b[1].completedAt)
                 );
                 
-                const labels = quizzes.map((_, index) => `Quiz ${index + 1}`);
+                const labels = quizzes.map(([quizId, _]) => quizId.replace('kuis', '').replace('Pertemuan', 'P'));
                 const scores = quizzes.map(([_, data]) => Math.round(data.score));
                 
                 new Chart(ctx, {
@@ -148,17 +148,13 @@
                         responsive: true,
                         maintainAspectRatio: false,
                         plugins: {
-                            legend: {
-                                display: false
-                            }
+                            legend: { display: false }
                         },
                         scales: {
                             y: {
                                 beginAtZero: true,
                                 max: 100,
-                                grid: {
-                                    color: 'rgba(0, 0, 0, 0.1)'
-                                },
+                                grid: { color: 'rgba(0, 0, 0, 0.1)' },
                                 ticks: {
                                     callback: function(value) {
                                         return value + '%';
@@ -166,15 +162,11 @@
                                 }
                             },
                             x: {
-                                grid: {
-                                    color: 'rgba(0, 0, 0, 0.1)'
-                                }
+                                grid: { color: 'rgba(0, 0, 0, 0.1)' }
                             }
                         },
                         elements: {
-                            point: {
-                                hoverRadius: 8
-                            }
+                            point: { hoverRadius: 8 }
                         }
                     }
                 });
@@ -215,9 +207,7 @@
                                 position: 'bottom',
                                 labels: {
                                     padding: 20,
-                                    font: {
-                                        size: 14
-                                    }
+                                    font: { size: 14 }
                                 }
                             }
                         },
@@ -247,59 +237,82 @@
                 
                 historyContainer.innerHTML = quizzes.map(([quizId, data]) => {
                     const date = new Date(data.completedAt).toLocaleDateString('id-ID', {
-                        day: 'numeric',
-                        month: 'short',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
+                        day: 'numeric', month: 'short', year: 'numeric',
+                        hour: '2-digit', minute: '2-digit'
                     });
                     
                     const quizName = quizId.replace('kuis', '').replace('Pertemuan', 'Pertemuan ');
                     const scoreColor = data.score >= 80 ? 'text-accent-green' : 
-                                    data.score >= 60 ? 'text-accent-blue' : 'text-accent-pink';
+                                     data.score >= 60 ? 'text-accent-blue' : 'text-accent-pink';
                     
-                    const timeSpent = data.timeSpent ? Math.floor(data.timeSpent / 60) : 0;
+                    const timeInSeconds = data.timeSpent || 0;
+                    const minutes = Math.floor(timeInSeconds / 60);
+                    const seconds = timeInSeconds % 60;
+                    const timeSpentFormatted = `${minutes}m ${seconds}s`;
                     
                     return `
                         <div class="flex flex-col md:flex-row justify-between items-start md:items-center p-4 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
                             <div class="flex-1 mb-3 md:mb-0">
                                 <h4 class="font-semibold text-gray-800 mb-1">${quizName}</h4>
-                                <div class="flex flex-wrap gap-4 text-sm text-gray-600">
+                                <div class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-600">
                                     <span>📅 ${date}</span>
-                                    <span>⏱️ ${timeSpent}m ${data.timeSpent % 60}s</span>
+                                    <span>⏱️ ${timeSpentFormatted}</span>
                                     <span>✅ ${data.correctAnswers}/${data.totalQuestions} benar</span>
                                 </div>
                             </div>
-                            <div class="text-right">
+                            <div class="flex-shrink-0 text-left md:text-right">
                                 <div class="text-2xl font-bold ${scoreColor} mb-1">
                                     ${Math.round(data.score)}%
                                 </div>
-                                <button onclick="this.showQuizDetail('${quizId}')" class="text-sm text-accent-purple hover:text-purple-600 transition-colors">
+                                <button data-quiz-id="${quizId}" class="view-detail-btn text-sm text-accent-purple hover:text-purple-600 font-semibold transition-colors">
                                     Lihat Detail →
                                 </button>
                             </div>
                         </div>
                     `;
                 }).join('');
+
+                // **PERBAIKAN:** Menggunakan addEventListener untuk menghindari masalah 'this'
+                historyContainer.querySelectorAll('.view-detail-btn').forEach(button => {
+                    button.addEventListener('click', (event) => {
+                        const quizId = event.currentTarget.dataset.quizId;
+                        this.showQuizDetail(quizId);
+                    });
+                });
             }
 
             showQuizDetail(quizId) {
                 const data = this.progressData[quizId];
-                if (!data || !data.answers) return;
-                
+                if (!data || !data.answers) {
+                    alert('Detail untuk kuis ini tidak tersedia.');
+                    return;
+                }
+
+                // Hapus modal lama jika ada
+                const oldModal = document.getElementById('quizDetailModal');
+                if (oldModal) {
+                    document.body.removeChild(oldModal);
+                }
+
                 const modal = document.createElement('div');
-                modal.className = 'fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50';
+                modal.id = 'quizDetailModal';
+                modal.className = 'fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4';
+                
+                const quizName = quizId.replace('kuis', '').replace('Pertemuan', 'Pertemuan ');
+
                 modal.innerHTML = `
-                    <div class="bg-white rounded-2xl p-6 m-4 max-w-2xl w-full max-h-96 overflow-y-auto shadow-2xl">
-                        <h3 class="text-2xl font-bold text-gray-800 mb-4 text-center">
-                            Detail ${quizId.replace('kuis', '').replace('Pertemuan', 'Pertemuan ')}
-                        </h3>
-                        <div class="space-y-4">
+                    <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] shadow-2xl flex flex-col">
+                        <div class="p-6 border-b">
+                           <h3 class="text-2xl font-bold text-gray-800 text-center">
+                                Detail ${quizName}
+                            </h3>
+                        </div>
+                        <div class="p-6 space-y-4 overflow-y-auto">
                             ${data.answers.map((answer, index) => `
                                 <div class="p-4 rounded-xl ${answer.isCorrect ? 'bg-soft-green border-l-4 border-accent-green' : 'bg-soft-pink border-l-4 border-accent-pink'}">
-                                    <div class="font-semibold text-gray-800 mb-2">Soal ${index + 1}:</div>
-                                    <div class="text-gray-700 mb-3">${answer.question}</div>
-                                    <div class="space-y-2">
+                                    <p class="font-semibold text-gray-800 mb-2">Soal ${index + 1}:</p>
+                                    <p class="text-gray-700 mb-3">${answer.question}</p>
+                                    <div class="space-y-2 border-t pt-2 mt-2">
                                         <div class="text-sm">
                                             <span class="font-semibold">Jawaban Anda:</span> 
                                             <span class="${answer.isCorrect ? 'text-accent-green' : 'text-accent-pink'}">${answer.userAnswer}</span>
@@ -315,8 +328,8 @@
                                 </div>
                             `).join('')}
                         </div>
-                        <div class="text-center mt-6">
-                            <button onclick="document.body.removeChild(this.parentElement.parentElement)" class="px-6 py-2 bg-gray-500 text-white font-semibold rounded-xl hover:bg-gray-600 transition-colors">
+                        <div class="text-center p-4 border-t bg-gray-50 rounded-b-2xl">
+                            <button id="closeDetailModalBtn" class="px-6 py-2 bg-gray-200 text-gray-700 font-semibold rounded-xl hover:bg-gray-300 transition-colors">
                                 Tutup
                             </button>
                         </div>
@@ -324,16 +337,29 @@
                 `;
                 
                 document.body.appendChild(modal);
+
+                // **PERBAIKAN:** Cara menutup modal yang lebih baik
+                const closeModal = () => {
+                    modal.classList.add('opacity-0');
+                    setTimeout(() => {
+                        if (document.body.contains(modal)) {
+                            document.body.removeChild(modal);
+                        }
+                    }, 300);
+                };
+
+                document.getElementById('closeDetailModalBtn').addEventListener('click', closeModal);
+                modal.addEventListener('click', (event) => {
+                    // Tutup modal jika klik di luar area konten (pada backdrop)
+                    if (event.target.id === 'quizDetailModal') {
+                        closeModal();
+                    }
+                });
             }
         }
 
-        window.showQuizDetail = function(quizId) {
-            statistikApp.showQuizDetail(quizId);
-        };
-
-        let statistikApp;
         document.addEventListener('DOMContentLoaded', () => {
-            statistikApp = new StatistikApp();
+            new StatistikApp();
         });
     </script>
 </body>

@@ -25,13 +25,15 @@
         }
     </script>
 
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
 </head>
 
 <body class="min-h-screen bg-gradient-to-br from-soft-blue via-soft-purple to-soft-pink">
     <div class="container mx-auto px-4 py-8">
         <header class="text-center mb-8">
-            <a href="/"
-                class="inline-flex items-center text-accent-purple hover:text-purple-600 mb-4 transition-colors">
+            <a href="/" class="inline-flex items-center text-accent-purple hover:text-purple-600 mb-4 transition-colors">
                 ← Kembali ke Beranda
             </a>
             <h1 class="text-3xl md:text-4xl font-bold text-gray-800 mb-2" id="quizTitle">
@@ -52,8 +54,7 @@
                         <div class="text-sm font-medium text-gray-600" id="progressText">0%</div>
                     </div>
                     <div class="w-full bg-gray-200 rounded-full h-3">
-                        <div class="bg-gradient-to-r from-accent-purple to-purple-400 h-3 rounded-full transition-all duration-500 ease-out"
-                            style="width: 0%" id="progressBar"></div>
+                        <div class="bg-gradient-to-r from-accent-purple to-purple-400 h-3 rounded-full transition-all duration-500 ease-out" style="width: 0%" id="progressBar"></div>
                     </div>
                 </div>
 
@@ -68,47 +69,51 @@
             </div>
 
             <div class="text-center">
-                <button id="nextButton"
-                    class="hidden px-8 py-3 bg-gradient-to-r from-accent-green to-green-400 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-                    disabled>
+                <button id="nextButton" class="hidden px-8 py-3 bg-gradient-to-r from-accent-green to-green-400 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none" disabled>
                     Selanjutnya
                 </button>
             </div>
         </div>
     </div>
 
-    <div id="resultModal"
-        class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm hidden items-center justify-center z-50">
+    <div id="nameModal" class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm hidden items-center justify-center z-50">
+        <div class="bg-white rounded-2xl p-8 m-4 max-w-md w-full text-center shadow-2xl transform transition-all scale-95 opacity-0" id="nameModalContent">
+            <h3 class="text-2xl font-bold text-gray-800 mb-4">Selamat Datang! 😃</h3>
+            <p class="text-gray-600 mb-6">Silakan masukkan nama Anda untuk memulai quiz.</p>
+            <input type="text" id="nameInput" placeholder="Ketik nama Anda di sini..." class="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent-purple mb-4">
+            <button id="startQuizButton" class="w-full py-3 px-4 bg-accent-purple text-white font-semibold rounded-xl hover:bg-purple-600 transition-colors">
+                🚀 Mulai Quiz
+            </button>
+        </div>
+    </div>
+
+
+    <div id="resultModal" class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm hidden items-center justify-center z-50">
         <div class="bg-white rounded-2xl p-8 m-4 max-w-md w-full text-center shadow-2xl">
             <div class="text-6xl mb-4" id="resultEmoji">🎉</div>
             <h3 class="text-2xl font-bold text-gray-800 mb-4">Quiz Selesai!</h3>
             <div class="text-4xl font-bold text-accent-purple mb-2" id="finalScore">85%</div>
             <p class="text-gray-600 mb-6" id="scoreMessage">Kerja bagus!</p>
             <div class="space-y-3">
-                <button id="reviewButton"
-                    class="w-full py-3 px-4 bg-accent-blue text-white font-semibold rounded-xl hover:bg-blue-600 transition-colors">
+                <button id="reviewButton" class="w-full py-3 px-4 bg-accent-blue text-white font-semibold rounded-xl hover:bg-blue-600 transition-colors">
                     📝 Lihat Pembahasan
                 </button>
-                <button id="retryButton"
-                    class="w-full py-3 px-4 bg-accent-purple text-white font-semibold rounded-xl hover:bg-purple-600 transition-colors">
+                <button id="retryButton" class="w-full py-3 px-4 bg-accent-purple text-white font-semibold rounded-xl hover:bg-purple-600 transition-colors">
                     🔄 Coba Lagi
                 </button>
-                <button id="backToHomeButton"
-                    class="w-full py-3 px-4 bg-gray-500 text-white font-semibold rounded-xl hover:bg-gray-600 transition-colors">
+                <button id="backToHomeButton" class="w-full py-3 px-4 bg-gray-500 text-white font-semibold rounded-xl hover:bg-gray-600 transition-colors">
                     🏠 Kembali ke Beranda
                 </button>
             </div>
         </div>
     </div>
 
-    <div id="reviewModal"
-        class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm hidden items-center justify-center z-50">
+    <div id="reviewModal" class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm hidden items-center justify-center z-50">
         <div class="bg-white rounded-2xl p-6 m-4 max-w-2xl w-full max-h-96 overflow-y-auto shadow-2xl">
             <h3 class="text-2xl font-bold text-gray-800 mb-4 text-center">📝 Pembahasan Jawaban</h3>
             <div id="reviewContent"></div>
             <div class="text-center mt-6">
-                <button id="closeReviewButton"
-                    class="px-6 py-2 bg-gray-500 text-white font-semibold rounded-xl hover:bg-gray-600 transition-colors">
+                <button id="closeReviewButton" class="px-6 py-2 bg-gray-500 text-white font-semibold rounded-xl hover:bg-gray-600 transition-colors">
                     Tutup
                 </button>
             </div>
@@ -116,6 +121,23 @@
     </div>
 
     <script>
+        // --- START INISIALISASI FIREBASE ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyCnQ22S54kX8ps7dXmnOujvuZ5khQLaytw",
+            authDomain: "sudarma-projects.firebaseapp.com",
+            databaseURL: "https://sudarma-projects-default-rtdb.firebaseio.com",
+            projectId: "sudarma-projects",
+            storageBucket: "sudarma-projects.appspot.com", // Perbaikan: .appspot.com
+            messagingSenderId: "747913074364",
+            appId: "1:747913074364:web:4318a41a8f370c1dcba2b9",
+            measurementId: "G-PQSWTJVJZ3"
+        };
+
+        // Inisialisasi Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        // --- END INISIALISASI FIREBASE ---
+
         class QuizApp {
 
             constructor() {
@@ -127,11 +149,48 @@
                 this.startTime = Date.now();
                 this.timerInterval = null;
                 this.answerLocked = false;
-                this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                this.audioCtx = new(window.AudioContext || window.webkitAudioContext)();
 
+                // Panggil prompt nama saat aplikasi dimulai
                 this.init();
             }
 
+            // Fungsi baru untuk mengirim data ke Firebase
+            // Fungsi baru untuk mengirim data ke Firebase
+            sendDataToFirebase(score) {
+                const userName = localStorage.getItem('quizUserName');
+                if (!userName) {
+                    console.error("Nama user tidak ditemukan di localStorage.");
+                    return;
+                }
+
+                // Kumpulkan hanya jawaban yang salah
+                const wrongAnswers = this.userAnswers
+                    .filter(answer => !answer.isCorrect)
+                    .map(answer => ({
+                        soal: answer.question,
+                        jawabanUser: answer.userAnswer,
+                        jawabanBenar: answer.correctAnswer
+                    }));
+
+                // Buat objek data yang akan dikirim
+                const quizResult = {
+                    nama: userName,
+                    skor: Math.round(score),
+                    quiz: this.currentQuiz, // <-- DATA NAMA KUIS DITAMBAHKAN DI SINI
+                    jawabanSalah: wrongAnswers,
+                    waktuSelesai: new Date().toISOString()
+                };
+
+                // Kirim data ke Firebase Realtime Database di bawah folder 'nilai'
+                database.ref('nilai').push(quizResult)
+                    .then(() => {
+                        console.log("Data nilai berhasil dikirim ke Firebase!");
+                    })
+                    .catch((error) => {
+                        console.error("Gagal mengirim data ke Firebase:", error);
+                    });
+            }
             playTone(frequency, duration = 150, type = 'sine') {
                 if (!this.audioCtx) return;
 
@@ -154,12 +213,10 @@
             playSoundFeedback(isCorrect) {
                 try {
                     if (isCorrect) {
-                        // Suara untuk jawaban benar - nada naik
                         this.playTone(523.25, 150, 'sine'); // C5
                         setTimeout(() => this.playTone(659.25, 150, 'sine'), 100); // E5
                         setTimeout(() => this.playTone(783.99, 200, 'sine'), 200); // G5
                     } else {
-                        // Suara untuk jawaban salah - nada turun
                         this.playTone(220.00, 300, 'square'); // A3
                         setTimeout(() => this.playTone(174.61, 400, 'square'), 150); // F3
                     }
@@ -177,7 +234,51 @@
                 return arr;
             }
 
-            async init() {
+            // Fungsi init sekarang memanggil prompt nama
+            init() {
+                this.promptForName();
+            }
+
+            // Fungsi baru untuk menampilkan modal dan menangani input nama
+            promptForName() {
+                const nameModal = document.getElementById('nameModal');
+                const nameModalContent = document.getElementById('nameModalContent');
+                const startQuizButton = document.getElementById('startQuizButton');
+                const nameInput = document.getElementById('nameInput');
+
+                nameModal.classList.remove('hidden');
+                nameModal.classList.add('flex');
+                setTimeout(() => {
+                    nameModalContent.classList.remove('scale-95', 'opacity-0');
+                }, 50);
+
+                // Jika nama sudah ada di localStorage, isikan otomatis
+                const existingName = localStorage.getItem('quizUserName');
+                if (existingName) {
+                    nameInput.value = existingName;
+                }
+                nameInput.focus();
+
+                startQuizButton.addEventListener('click', () => {
+                    const userName = nameInput.value.trim();
+                    if (userName) {
+                        localStorage.setItem('quizUserName', userName);
+                        nameModalContent.classList.add('scale-95', 'opacity-0');
+                        setTimeout(() => {
+                            nameModal.classList.add('hidden');
+                            nameModal.classList.remove('flex');
+                        }, 300);
+                        // Mulai kuis setelah nama dimasukkan
+                        this.startQuiz();
+                    } else {
+                        alert('Nama tidak boleh kosong!');
+                        nameInput.focus();
+                    }
+                });
+            }
+
+            // Fungsi baru yang berisi logika awal kuis
+            async startQuiz() {
                 if (!this.currentQuiz) {
                     window.location.href = '/';
                     return;
@@ -265,26 +366,23 @@
                     optionsContainer.appendChild(optionElement);
                 });
 
-                // Reset state untuk soal baru
                 this.selectedAnswer = null;
                 this.answerLocked = false;
             }
             selectAnswer(answer, element) {
-                if (this.answerLocked) return; // Mencegah perubahan jawaban setelah terpilih
+                if (this.answerLocked) return;
 
                 const question = this.questions[this.currentQuestionIndex];
                 const isCorrect = answer === question.jawaban;
 
-                // Reset semua option cards
                 document.querySelectorAll('.option-card').forEach(card => {
                     card.classList.remove('border-accent-purple', 'bg-soft-purple', 'ring-2', 'ring-accent-purple');
                     card.classList.remove('bg-green-100', 'border-green-500', 'text-green-800');
                     card.classList.remove('bg-red-100', 'border-red-500', 'text-red-800');
                     card.classList.add('border-gray-200');
-                    card.style.pointerEvents = 'auto'; // Reset pointer events
+                    card.style.pointerEvents = 'auto';
                 });
 
-                // Tampilkan feedback visual langsung
                 if (isCorrect) {
                     element.classList.remove('border-gray-200');
                     element.classList.add('bg-green-100', 'border-green-500', 'text-green-800', 'ring-2', 'ring-green-500');
@@ -294,7 +392,6 @@
                     element.classList.add('bg-red-100', 'border-red-500', 'text-red-800', 'ring-2', 'ring-red-500');
                     this.playSoundFeedback(false);
 
-                    // Tampilkan jawaban yang benar
                     document.querySelectorAll('.option-card').forEach(card => {
                         if (card.textContent === question.jawaban) {
                             card.classList.add('bg-green-100', 'border-green-500', 'text-green-800', 'ring-2', 'ring-green-500');
@@ -302,22 +399,18 @@
                     });
                 }
 
-                // Lock pilihan setelah memilih dan enable tombol next
                 this.answerLocked = true;
                 this.selectedAnswer = answer;
                 document.getElementById('nextButton').disabled = false;
 
-                // Disable semua option cards untuk mencegah klik ulang
                 document.querySelectorAll('.option-card').forEach(card => {
                     card.style.pointerEvents = 'none';
                 });
                 setTimeout(() => {
-        if (this.selectedAnswer) {
-            document.getElementById('nextButton').click();
-        }
-    }, 800);
-                // Auto advance setelah 2 detik (opsional - bisa dihilangkan jika tidak diinginkan)
-                
+                    if (this.selectedAnswer) {
+                        document.getElementById('nextButton').click();
+                    }
+                }, 800);
             }
             handleNextQuestion() {
                 if (!this.selectedAnswer) return;
@@ -347,6 +440,9 @@
                 const correctAnswers = this.userAnswers.filter(a => a.isCorrect).length;
                 const score = (correctAnswers / this.questions.length) * 100;
                 const timeSpent = Math.floor((Date.now() - this.startTime) / 1000);
+
+                // Panggil fungsi pengiriman data ke Firebase
+                this.sendDataToFirebase(score);
 
                 this.saveProgress(score, timeSpent);
                 this.showResult(score, correctAnswers);

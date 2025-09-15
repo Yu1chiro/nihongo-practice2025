@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitoring Leaderboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    
+    <style>
+        @media (max-width: 768px) {
+            .responsive-table thead { display: none; }
+            .responsive-table tr {
+                display: block;
+                margin-bottom: 1rem;
+                border: 1px solid #ddd;
+                border-radius: 0.5rem;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+                background: white;
+            }
+            .responsive-table td {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 0.75rem 1rem;
+                text-align: right;
+                border-bottom: 1px solid #eee;
+            }
+            .responsive-table td::before {
+                content: attr(data-label);
+                font-weight: 600;
+                text-align: left;
+                margin-right: 1rem;
+            }
+            .responsive-table td:last-child { border-bottom: none; }
+            /* Styling untuk tombol di mobile */
+            .responsive-table td[data-label="Aksi"] {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 0.5rem;
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100 font-sans antialiased">
+
+    <div id="loginSection" class="min-h-screen flex items-center justify-center p-4">
+        <div class="w-full max-w-sm bg-white p-8 rounded-xl shadow-lg">
+            <h1 class="text-2xl font-bold text-center text-gray-800 mb-2">Akses Monitoring</h1>
+            <p class="text-center text-gray-500 mb-6">Masukkan token untuk melanjutkan.</p>
+            <div class="space-y-4">
+                <input type="password" id="tokenInput" placeholder="••••••••" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <button id="loginButton" class="w-full py-3 px-4 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors">
+                    Login
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="monitoringSection" class="hidden container mx-auto p-4 md:p-8">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+            <h1 class="text-3xl font-bold text-gray-800">🏆 Leaderboard Kuis</h1>
+            <button id="logoutButton" class="px-4 py-2 bg-red-500 text-white text-sm font-semibold rounded-lg hover:bg-red-600 transition w-full md:w-auto">Logout</button>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-md overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left text-gray-700 responsive-table">
+                    <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                        <tr>
+                            <th scope="col" class="px-6 py-3">#</th>
+                            <th scope="col" class="px-6 py-3">Nama Peserta</th>
+                            <th scope="col" class="px-6 py-3">Skor</th>
+                            <th scope="col" class="px-6 py-3">Nama Kuis</th>
+                            <th scope="col" class="px-6 py-3">Waktu Selesai</th>
+                            <th scope="col" class="px-6 py-3 text-center">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboardBody">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <div id="detailModal" class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+            <header class="flex justify-between items-center p-4 border-b">
+                <h2 id="modalTitle" class="text-lg font-bold text-gray-800">Detail Jawaban Salah</h2>
+                <button id="closeModalButton" class="text-gray-500 hover:text-gray-800">&times;</button>
+            </header>
+            <main id="modalContent" class="p-6 overflow-y-auto">
+                </main>
+        </div>
+    </div>
+
+
+    <script>
+        // --- INISIALISASI FIREBASE ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyCnQ22S54kX8ps7dXmnOujvuZ5khQLaytw",
+            authDomain: "sudarma-projects.firebaseapp.com",
+            databaseURL: "https://sudarma-projects-default-rtdb.firebaseio.com",
+            projectId: "sudarma-projects",
+            storageBucket: "sudarma-projects.appspot.com",
+            messagingSenderId: "747913074364",
+            appId: "1:747913074364:web:4318a41a8f370c1dcba2b9"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        // --- ELEMEN DOM ---
+        const loginSection = document.getElementById('loginSection');
+        const monitoringSection = document.getElementById('monitoringSection');
+        const tokenInput = document.getElementById('tokenInput');
+        const loginButton = document.getElementById('loginButton');
+        const logoutButton = document.getElementById('logoutButton');
+        const leaderboardBody = document.getElementById('leaderboardBody');
+        const detailModal = document.getElementById('detailModal');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalContent = document.getElementById('modalContent');
+        const closeModalButton = document.getElementById('closeModalButton');
+
+
+        // --- FUNGSI BARU UNTUK MENAMPILKAN DETAIL ---
+        function showDetails(wrongAnswers, userName) {
+            modalTitle.textContent = `Detail Jawaban Salah - ${userName}`;
+            modalContent.innerHTML = ''; // Kosongkan konten sebelumnya
+
+            if (!wrongAnswers || wrongAnswers.length === 0) {
+                modalContent.innerHTML = `<p class="text-gray-500 text-center">Tidak ada jawaban yang salah. Kerja bagus!</p>`;
+            } else {
+                const contentContainer = document.createElement('div');
+                contentContainer.className = 'space-y-4';
+                
+                wrongAnswers.forEach((item, index) => {
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'p-4 rounded-lg border bg-gray-50';
+                    itemDiv.innerHTML = `
+                        <p class="font-semibold text-gray-800 mb-2">Soal: <span class="font-normal">${item.soal}</span></p>
+                        <p class="text-sm font-semibold text-red-600">Jawaban user : <span class="font-normal">${item.jawabanUser} ❌</span></p>
+                        <p class="text-sm font-semibold text-green-600">Jawaban Benar: <span class="font-normal">${item.jawabanBenar} ✅</span></p>
+                    `;
+                    contentContainer.appendChild(itemDiv);
+                });
+                modalContent.appendChild(contentContainer);
+            }
+            detailModal.classList.remove('hidden');
+            detailModal.classList.add('flex');
+        }
+
+        // --- FUNGSI UTAMA (Diperbarui) ---
+
+        function deleteScore(key) {
+            if (confirm('Apakah Anda yakin ingin menghapus data ini?')) {
+                database.ref('nilai/' + key).remove();
+            }
+        }
+
+        function loadLeaderboardData() {
+            const nilaiRef = database.ref('nilai');
+            
+            nilaiRef.on('value', (snapshot) => {
+                leaderboardBody.innerHTML = '<tr><td colspan="6" class="text-center p-8 text-gray-500">Memuat data...</td></tr>';
+                if (snapshot.exists()) {
+                    leaderboardBody.innerHTML = '';
+                    const data = snapshot.val();
+                    const scores = Object.entries(data).map(([key, value]) => ({ key, ...value }));
+                    
+                    scores.sort((a, b) => b.skor - a.skor);
+
+                    scores.forEach((item, index) => {
+                        const tr = document.createElement('tr');
+                        const time = new Date(item.waktuSelesai).toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+                        tr.innerHTML = `
+                            <td data-label="#" class="px-6 py-4 font-medium">${index + 1}</td>
+                            <td data-label="Nama" class="px-6 py-4 font-semibold text-gray-900">${item.nama}</td>
+                            <td data-label="Skor" class="px-6 py-4 font-bold text-blue-600">${item.skor}</td>
+                            <td data-label="Kuis" class="px-6 py-4">${item.quiz || '-'}</td>
+                            <td data-label="Waktu" class="px-6 py-4 text-gray-500">${time}</td>
+                            <td data-label="Aksi" class="px-6 py-4">
+                                <div class="flex items-center justify-center gap-3">
+                                    <button class="detail-btn text-sm text-green-500 hover:text-green-700 font-semibold">
+                                        <i class="fas fa-eye"></i> Detail
+                                    </button>
+                                    <button class="delete-btn text-sm text-red-500 hover:text-red-700 font-semibold">
+                                        <i class="fas fa-trash-alt"></i> Hapus
+                                    </button>
+                                </div>
+                            </td>
+                        `;
+                        
+                        // Menambahkan event listener secara dinamis
+                        tr.querySelector('.detail-btn').addEventListener('click', () => showDetails(item.jawabanSalah, item.nama));
+                        tr.querySelector('.delete-btn').addEventListener('click', () => deleteScore(item.key));
+
+                        leaderboardBody.appendChild(tr);
+                    });
+
+                } else {
+                    leaderboardBody.innerHTML = '<tr><td colspan="6" class="text-center p-8 text-gray-500">Belum ada data nilai.</td></tr>';
+                }
+            });
+        }
+        
+        function handleLogin() {
+            const enteredToken = tokenInput.value.trim();
+            if (!enteredToken) { alert('Token tidak boleh kosong!'); return; }
+
+            database.ref('token').once('value').then((snapshot) => {
+                if (enteredToken === snapshot.val()) {
+                    sessionStorage.setItem('isLoggedIn', 'true');
+                    showMonitoringPage();
+                } else {
+                    alert('Token salah! Akses ditolak.');
+                    tokenInput.value = '';
+                }
+            });
+        }
+
+        function showMonitoringPage() {
+            loginSection.classList.add('hidden');
+            monitoringSection.classList.remove('hidden');
+            loadLeaderboardData();
+        }
+        
+        function handleLogout() {
+            sessionStorage.removeItem('isLoggedIn');
+            loginSection.classList.remove('hidden');
+            monitoringSection.classList.add('hidden');
+            database.ref('nilai').off();
+        }
+
+        // --- EVENT LISTENERS ---
+        loginButton.addEventListener('click', handleLogin);
+        tokenInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleLogin(); });
+        logoutButton.addEventListener('click', handleLogout);
+
+        // Event listener untuk menutup modal
+        closeModalButton.addEventListener('click', () => detailModal.classList.add('hidden'));
+        detailModal.addEventListener('click', (e) => {
+            if (e.target === detailModal) { // Hanya tutup jika klik di area backdrop
+                detailModal.classList.add('hidden');
+            }
+        });
+
+        // Cek status login saat halaman dimuat
+        document.addEventListener('DOMContentLoaded', () => {
+            if (sessionStorage.getItem('isLoggedIn') === 'true') {
+                showMonitoringPage();
+            }
+        });
+    </script>
+</body>
+</html>

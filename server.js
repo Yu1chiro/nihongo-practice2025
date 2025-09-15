@@ -124,6 +124,9 @@ app.get('/quiz', (req, res) => {
 app.get('/statistik', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'statistik.html'));
 });
+app.get('/monitoring', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'monitoring.html'));
+});
 
 app.get('/api/quiz/:pertemuan', (req, res) => {
   const pertemuan = req.params.pertemuan;
